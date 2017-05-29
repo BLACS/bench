@@ -1,1 +1,4 @@
+.PHONY: all
+
 all:
+	true

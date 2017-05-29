@@ -1,5 +1,7 @@
-FROM ubuntu:latest
-RUN git clone https://github.com/BLACS/bench.git
-RUN cd bench
+FROM ubuntu
+RUN apt-get update && apt-get install -y \
+    make
+COPY . ./bench
+WORKDIR bench
 RUN make
-CMD ["./check.sh"]
+ENTRYPOINT ./check.sh

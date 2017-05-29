@@ -1,2 +1,2 @@
 #! /bin/sh
-cat "Ok" > report.csv
+echo "Ok"
