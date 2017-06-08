@@ -1,0 +1,5 @@
+[contrib/reference]
+checkout = git clone git@github.com:BLACS/reference.git reference
+
+[contrib/bds]
+checkout = git clone git@github.com:BLACS/reference.git bds
