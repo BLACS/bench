@@ -4,6 +4,8 @@ open BlacsTypes
 
 type requestType = Write | Read | Time | Hash
 
+exception ParseException of string
+
 let args = List.tl (Array.to_list Sys.argv)
 
 let apiUrl = List.hd args
@@ -87,46 +89,46 @@ let testConnection typ name bufSize  =
     makeConnection typ url write httpHeader name          in
   try
     let responseCode = performConnection connection in
-    print_endline (string_of_int responseCode); flush_all ();
-    assert (responseCode = 200);
+    assert_equal 200 responseCode;
     Buffer.contents buffer 
   with _ -> assert false
 
 let testResponse typ name responseReal =
-  assert (responseReal = (expectedResponse name typ))
+  assert_equal responseReal (expectedResponse name typ)
 
 let makeTest typ name checkResponse bufSize =
   let response = testConnection typ name bufSize in
   if checkResponse then
     testResponse typ name (Yojson.Safe.from_string response)
   else
-    assert true
+    assert_equal true true
 
 let readTest name =
+  let open ReadPromise in
   let readPromise =
-    match (Yojson.Safe.from_string (testConnection Read name 512)
-           |> BlacsTypes.ReadPromise.of_yojson) with
-      Result.Ok(rp) -> rp
-    | _ -> assert false
-  in
+    try
+      match (Yojson.Safe.from_string (testConnection Read name 512)
+             |> of_yojson) with
+        Result.Ok(rp) -> rp
+      | _ -> raise (ParseException "Can not parse ReadPromise")
+    with ParseException(m) -> assert_failure m
+    in
   (if readPromise.date > (Unix.gettimeofday ()) then
-     Unix.sleepf (readPromise.date -. (Unix.gettimeofday ()))
+     Unix.sleepf (readPromise.date -. (Unix.gettimeofday ()) +. 5.)
    else ());
   let response = testConnection Hash readPromise.hash 1024 in
-  print_endline (Yojson.Safe.(to_string (from_string response)));
-  print_endline (Yojson.Safe.to_string (expectedResponse "simple" Read)); flush_all ();
   testResponse Read name (Yojson.Safe.from_string response)
     
     
-let writeTest        = makeTest Write
+let writeTest        = fun name -> makeTest Write name false 1
 
-let timeTest         = makeTest Time
+let timeTest         = fun name -> makeTest Time  name false 8
 
-let writeSimple ()   = writeTest "simple" false 1
+let writeSimple ()   = writeTest "simple"
 
-let readSimple ()    = readTest "simple"
+let readSimple ()    = readTest  "simple"
 
-let timeSimple ()    = timeTest "simple" false 8
+let timeSimple ()    = timeTest  "simple"
     
 let suite = "blacs-api" >::: ["read_simple"  >:: readSimple;
                               "write_simple" >:: writeSimple;

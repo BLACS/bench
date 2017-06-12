@@ -82,26 +82,15 @@ let requestedBench contrib =
 
 let bench contrib =
   let contribName = List.nth Str.(split (regexp "/") contrib) 1 in
-  mkdir ("report/" ^ contribName) 0o755;
-  run "./check"
-
-
-let forkIt contrib =
-  let pid = Unix.fork () in
-  match pid with
-    0 -> bench contrib; 0
-  | _ -> pid
-     
+  run ("./check " ^ contribName)
 
 let rec loop () = Unix.(
     let open List in
     pullRepos ();
-    skip (map forkIt (filter requestedBench (lsRepos ())));
+    skip (iter bench (filter requestedBench (lsRepos ())));
+    run "./updateReport.sh";
     Unix.sleep 1800;
     loop ()
   )
-
-
-let () = mkdir "report" 0o755
 
 let main = loop ()

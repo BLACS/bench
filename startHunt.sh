@@ -2,5 +2,5 @@
 
 ocamlbuild -clean
 ocamlbuild -use-ocamlfind hunt.native
-mr up
-./hunt.byte &
+mkdir report; mr up
+./hunt.native &
