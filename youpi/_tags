@@ -1,5 +1,2 @@
-<*> : package(unix), package(str)
 <src>: include
-<src/*>: package(oUnit)
-<src/*>: package(ppx_deriving_yojson)
-<src/*>: package(curl)
+<src/*>: package(unix), package(ppx_deriving_yojson), package(curl), package(str)
