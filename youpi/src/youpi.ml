@@ -10,7 +10,7 @@ exception TestException
 
 let pi = acos (-. 1.)
 
-let print str = print_endline str; flush_all ()
+let print str = print_string str; flush_all ()
 
 (** Normal Gauss distribution **)
 let g = fun mu sigma x ->
@@ -49,6 +49,8 @@ let args = List.tl (Array.to_list Sys.argv)
 
 let apiUrl = List.hd args
 
+let implementation = match args with _::name::_ -> name | _-> assert false
+
 (* let apiUrl = "https://virtserver.swaggerhub.com/blacs/pervasives/0.1" *)
 
 let skip = fun _ -> ()
@@ -59,7 +61,7 @@ let readDir dirname =
   let l = Array.to_list (Sys.readdir dirname) in
   List.filter (fun str -> ".rq" = Str.last_chars str 3) l 
 
-let httpHeader = ["accept: application/json"; "content: application/json"]
+let header = ["accept: application/json"; "content-type: application/json"]
 
 let makeUrl api typ getArgs =
   let separator = "/" in
@@ -79,7 +81,7 @@ let httpConnection url writeFunction httpHeader =
   set_httpheader connection httpHeader;
   connection
 
-let postConnection url writeFunction httpHeader typ name httpBody =
+let postConnection url writeFunction httpHeader typ httpBody name =
   let open Curl in
   let connection = httpConnection url writeFunction httpHeader in
   set_post connection true;
@@ -99,7 +101,7 @@ let getConnection url writeFunction httpHeader typ getParams =
 let makeConnection typ url writeFunction httpHeader httpBody name =
   match typ,httpBody with
     Write,Some(body) | Read,Some(body) ->
-    postConnection url writeFunction httpHeader body typ name
+    postConnection url writeFunction httpHeader typ body name
   | Time,None ->
     getConnection url writeFunction httpHeader typ None
   | Hash,None ->
@@ -109,24 +111,18 @@ let makeConnection typ url writeFunction httpHeader httpBody name =
 let performConnection connection =
   let open Curl in
   perform connection;
-  get_responsecode connection 
-
+  get_responsecode connection
 let timeInServer connection =
   let open Curl in
   let connectTime      = get_connecttime connection       in
   let startTransferTime = get_starttransfertime connection in
   startTransferTime -. connectTime
   
-let httpBody path =
-  let in_c = open_in path in
-  let line =
-    try
-      Some (input_line in_c)
-    with _ -> None
-  in
-  match line with
-    Some rq -> close_in in_c; line
-  | None -> failwith ("Cannot read youpi request at "^path)
+let getHttpBody path =
+  try
+    let s = Yojson.Safe.from_file path |> Yojson.Safe.to_string in
+    s
+  with _ -> failwith "dldl"
 
 let expectedResponse name typ =
   let len = String.length name in
@@ -148,7 +144,7 @@ let testConnection typ name httpBody bufSize  =
     Buffer.add_string buffer data;
     String.length data                              in
   let connection =
-    makeConnection typ url write httpHeader httpBody name          in
+    makeConnection typ url write header httpBody name          in
   try
     let responseCode = performConnection connection in
     let time         = timeInServer connection      in
@@ -168,14 +164,14 @@ let makeTest typ name expectedResponse httpBody bufSize () =
   time
 
 let writeTest = fun name ->
-  let body = httpBody ("requests/write/"^name) in
+  let body = getHttpBody ("requests/write/"^name) in
   let expectedResponse = expectedResponse name Time in
   makeTest Write name expectedResponse (Some body) 1 
   
 
 let readTest name  =
   let open ReadPromise in
-  let body = httpBody ("requests/read/"^name) in
+  let body = getHttpBody ("requests/read/"^name) in
   let expectedResponse = expectedResponse name Read       in
   let readHash () =
     let readPromise =
@@ -215,7 +211,7 @@ let makeBlacsTest typ name  =
   | Time  -> timeTest  name
   | _ -> assert false
 
-let runBench = List.iter (fun x -> print_string (string_of_float (benchFunction 10 x)))
+let runBench = List.iter (fun x -> print (string_of_float (benchFunction 10 x)))
 
 let () =
   let makeWriteTest = makeBlacsTest Write in
@@ -224,6 +220,7 @@ let () =
   let writeTests    = List.map makeWriteTest writeRequests in
   let readTests     = List.map makeReadTest  readRequests  in
   let timeTests     = List.map makeTimeTest  timeRequests  in
-  runBench writeTests;print_string ", ";
-  runBench readTests; print_string ", ";
+  print implementation; print ", ";
+  runBench writeTests;print ", ";
+  runBench readTests; print ", ";
   runBench timeTests
