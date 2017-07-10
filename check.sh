@@ -12,6 +12,8 @@ echo $IP
 
 cd youpi
 
+git pull
+
 ./runYoupi.sh $CONTRB $IP:8080
 
 
