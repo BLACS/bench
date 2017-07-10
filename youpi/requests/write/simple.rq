@@ -1,1 +1,0 @@
-{"tag":"87d9709102cad0afa36a46627c985eaf4c106de4","time":26,"origin":{"row":32,"col":42},"length":100,"width":25,"values":[{"ty":"int","data":[6],"promises":null},{"ty":"none","data":null,"promises":null},{"ty":"count","data":[1,5,10,8,42],"promises":[{"date":1495633727.587939,"domain":[1,5,10,1],"value":5},{"date":1495633500.875601,"domain":[2,5,10,7],"value":6}]}]}
