@@ -185,10 +185,14 @@ let readTest name  =
       with
       | ConnectionException -> raise ConnectionException
     in
-    (if readPromise.date > (Unix.gettimeofday ()) then
-       Unix.sleepf (readPromise.date -. (Unix.gettimeofday ()) +. 5.)
-     else ());
-    makeTest Hash readPromise.hash expectedResponse None 1024 ()
+    let wait =
+      (if readPromise.date > (Unix.gettimeofday ()) then
+        let t = (readPromise.date -. (Unix.gettimeofday ()) +. 0.05) in
+        Unix.sleepf t;
+        t
+      else 0.)
+    in
+    wait +. makeTest Hash readPromise.hash expectedResponse None 1024 ()
   in
   readHash
   
@@ -202,7 +206,25 @@ let writeRequests = readDir "requests/write"
 
 let readRequests  = readDir "requests/read"
 
-let timeRequests  = readDir "requests/time" 
+let timeRequests  = readDir "requests/time"
+
+let run cmd =
+  let status = Sys.command cmd in
+  if status != 0 then
+    print_endline (cmd ^ " failed with status " ^ (string_of_int status))
+
+let evalTest () =
+  let cmd =
+    "docker run --rm --name evaluator evaluator http://172.17.0.2:8080 test alice bob"
+  in
+  let t0 = Unix.gettimeofday () in
+  (for i=1 to 5 do
+    run cmd;
+  done);
+  let t1 = Unix.gettimeofday () in
+  (t1 -. t0) /. 5.
+
+  
 
 let makeBlacsTest typ name  =
   match typ with
@@ -223,4 +245,6 @@ let () =
   print implementation; print ", ";
   runBench writeTests;print ", ";
   runBench readTests; print ", ";
-  runBench timeTests
+  runBench timeTests; print ", ";
+  runBench [evalTest]
+  
